@@ -1,6 +1,7 @@
 <script lang="ts">
 	import default_graph from '../resources/demo.json';
-	import { SvelteFlow, Background, type Edge, type Node } from '@xyflow/svelte';
+	import {  layout_graph } from '$lib/layout';
+	import { SvelteFlow, Background, type Edge, type Node, Position } from '@xyflow/svelte';
 	import { writable } from 'svelte/store';
 	import '@xyflow/svelte/dist/style.css';
 	import { GREY } from '$lib/common';
@@ -24,14 +25,25 @@
 			return;
 		}
 
-		for (const node of wrapper.list_nodes()) {
-			console.log(node.label, node.id)
-		}
+		const loadedNodes: Node[] = wrapper.list_nodes().map((node) => ({
+			id: `${node.id}`,
+			data: { label: node.label },
+			position: { x: 0, y: 0 },
+			targetPosition: Position.Left,
+			sourcePosition: Position.Right,
+		}));
 
-		for (const edge of wrapper.list_edges()) {
-			console.log(edge.source_node_id, edge.sync_node_id, edge.source_arg_idx, edge.sync_arg_idx);
-		}
-		
+		const loadedEdges: Edge[] = wrapper.list_edges().map((edge) => ({
+			id: `${edge.source_node_id}-${edge.sync_node_id}`,
+			source: `${edge.source_node_id}`,
+			target: `${edge.sync_node_id}`
+		}));
+
+		// TODO: only run this on the condition that there is no layout info
+		layout_graph(loadedNodes, loadedEdges);
+
+		nodes.set(loadedNodes);
+		edges.set(loadedEdges);
 	});
 </script>
 

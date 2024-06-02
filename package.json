@@ -35,6 +35,7 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@dagrejs/dagre": "^1.1.2",
 		"@xyflow/svelte": "^0.1.3"
 	}
 }
