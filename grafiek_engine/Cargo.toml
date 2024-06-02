@@ -1,7 +1,0 @@
-[package]
-name = "grafiek_engine"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-tweak_shader = "0.2.6"
