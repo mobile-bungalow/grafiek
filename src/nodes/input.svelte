@@ -3,18 +3,17 @@
 	import test_card from '../resources/test_card.jpg';
 	import { onMount } from 'svelte';
 	import { handleImageUpload, loadImageSrcThen, type CommonNodeData } from '$lib/common';
-	import WebgpuCanvas from './webgpuCanvas.svelte';
 
 	export let data: CommonNodeData;
 	export let file_input: HTMLInputElement;
 
-	const { id, label, ty, engine, device } = data;
+	const { id, label, ty, engine } = data;
 
-	let preview_canvas: WebgpuCanvas;
+	let preview_canvas: HTMLCanvasElement;
 
-	const onImageLoad = (_: { data: Uint8ClampedArray; width: number; height: number }) => {
-		// set input on engine
-		// then tell it to write to update the preview on this node
+	const onImageLoad = (im: { data: Uint8ClampedArray; width: number; height: number }) => {
+    engine.set_input_image(Uint8Array.from(im.data), im.width, im.height, id);
+    engine.update_preview(id);
 	};
 
 	const handleChange = (e: Event) => {
@@ -22,7 +21,7 @@
 	};
 
 	onMount(() => {
-		engine.register_surface(id, preview_canvas.get_canvas());
+		engine.register_surface(id, preview_canvas);
 		loadImageSrcThen(test_card, onImageLoad);
 	});
 
@@ -33,7 +32,7 @@
 		{label} - {ty}
 	</div>
 	<div>
-    <WebgpuCanvas bind:this={preview_canvas} {device}></WebgpuCanvas>
+    <canvas bind:this={preview_canvas}></canvas>
 	</div>
 	<input bind:this={file_input} type="file" accept="image/*" on:change={handleChange} />
 	<Handle type="source" position={Position.Right} />

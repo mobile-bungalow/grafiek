@@ -1,17 +1,20 @@
 mod init;
-
-use std::collections::HashMap;
+mod preview_manager;
 
 use grafiek_engine::{
     document::{self, Document},
     Engine,
 };
-use log::info;
-use log::Level;
-use tweak_shader::RenderContext;
+use preview_manager::PreviewManager;
+
+// wasm
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
-use wgpu::{Surface, SurfaceTarget};
+
+// logging
+use console_error_panic_hook;
+use log::Level;
+use std::panic;
 
 const FMT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
@@ -20,9 +23,8 @@ pub struct EngineWrapper {
     device: wgpu::Device,
     queue: wgpu::Queue,
     instance: wgpu::Instance,
-    letter_box_ctx: RenderContext,
     engine: Engine,
-    node_surfaces: HashMap<usize, Surface<'static>>,
+    preview_manager: PreviewManager,
 }
 
 #[derive(Debug, Clone)]
@@ -69,6 +71,7 @@ impl From<document::Op> for NodeTypes {
 #[wasm_bindgen]
 impl EngineWrapper {
     pub async fn init(json: String) -> Result<EngineWrapper, String> {
+        console_error_panic_hook::set_once();
         console_log::init_with_level(Level::Debug).map_err(|_| "log init failed".to_owned())?;
         let init::WgpuContext {
             queue,
@@ -79,27 +82,19 @@ impl EngineWrapper {
         let doc = Document::load(json).map_err(|e| format!("{e:?}"))?;
         let engine = Engine::new(&doc, &device, &queue).map_err(|e| format!("{e:?}"))?;
 
-        let letter_box_ctx = RenderContext::new(
-            include_str!("../resources/letterbox.fs"),
-            FMT,
-            &device,
-            &queue,
-        )
-        .map_err(|_| "Could not init letterbox ctx".to_owned())?;
-
+        let preview_manager = PreviewManager::new(&device, &queue)?;
         Ok(EngineWrapper {
             engine,
             queue,
             device,
-            letter_box_ctx,
             instance,
-            node_surfaces: HashMap::new(),
+            preview_manager,
         })
     }
 
     pub fn render(&mut self) {
         self.engine.render(&self.device, &self.queue);
-        self.update_previews();
+        self.update_all_previews();
     }
 
     pub fn list_nodes(&self) -> Vec<NodeInfo> {
@@ -128,12 +123,8 @@ impl EngineWrapper {
     pub fn remove_node(&mut self, id: usize) {}
 
     pub fn register_surface(&mut self, id: usize, canvas: HtmlCanvasElement) {
-        let wgpu_surface = self
-            .instance
-            .create_surface(SurfaceTarget::Canvas(canvas))
-            .unwrap();
-
-        self.node_surfaces.insert(id, wgpu_surface);
+        self.preview_manager
+            .register_surface(id, canvas, &self.device, &self.instance)
     }
 
     pub fn update_node_metadata(&mut self, id: usize, metadata: usize) {}
@@ -143,58 +134,27 @@ impl EngineWrapper {
     pub fn disconnect_nodes(&mut self, out_id: usize, in_id: usize, out_edge: &str, in_edge: &str) {
     }
 
-    pub fn update_previews(&mut self) {
-        for (id, surface) in self.node_surfaces.iter() {
-            info!("updating previews!");
-            let Some(preview) = self.engine.get_preview(*id as u32) else {
-                info!("continuing!");
-                continue;
-            };
+    /// TODO: more info logged on failure / throw an error
+    pub fn update_preview(&mut self, id: usize) {
+        let Some(preview) = self.engine.get_preview(id as u32) else {
+            return;
+        };
 
-            let surface = match surface.get_current_texture() {
-                Ok(s) => s,
-                Err(e) => {
-                    info!("{e:?}");
-                    continue
-                }
-            };
-
-           // info!("unwrap!");
-           // let width = surface.texture.width() as f32;
-           // let height = surface.texture.height() as f32;
-
-           // *self
-           //     .letter_box_ctx
-           //     .get_input_as::<f32>("output_height")
-           //     .unwrap() = height;
-           // *self
-           //     .letter_box_ctx
-           //     .get_input_as::<f32>("output_width")
-           //     .unwrap() = width;
-           // *self
-           //     .letter_box_ctx
-           //     .get_input_as::<f32>("aspect_ratio")
-           //     .unwrap() = width / height;
-           // self.letter_box_ctx
-           //     .load_shared_texture(preview, "input_image");
-           // info!("unwrapped all!");
-
-           // self.letter_box_ctx.render(
-           //     &self.queue,
-           //     &self.device,
-           //     &surface.texture.create_view(&Default::default()),
-           //     surface.texture.width(),
-           //     surface.texture.height(),
-           // );
-           // info!("render!");
-
-           // surface.present();
-            info!("present!");
-        }
-        info!("done!");
+        self.preview_manager
+            .update_preview(&self.device, &self.queue, id, preview);
     }
 
-    pub fn set_input() {}
+    pub fn update_all_previews(&mut self) {
+        let dirty_nodes = self.preview_manager.dirty_nodes();
+        dirty_nodes.into_iter().for_each(|id| self.update_preview(id));
+    }
+
+    //TODO: get rid of this and generalize
+    pub fn set_input_image(&mut self, data: Vec<u8>, width: u32, height: u32, id: usize) {
+        
+        self.engine
+            .set_input_var("input", data, width, height, &self.device, &self.queue);
+    }
 
     pub fn export_output(&self, name: &str) {}
 }

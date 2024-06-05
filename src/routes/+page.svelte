@@ -5,25 +5,16 @@
 	import '@xyflow/svelte/dist/style.css';
 	import { GREY } from '$lib/common';
 	import init, { EngineWrapper } from '../../grafiek_wasm/pkg';
-	// we need onMount to run init
 	import { onMount } from 'svelte';
 	import { App } from '$lib/app';
 	import { nodeTypes } from '$lib/common';
 
-
 	const nodes = writable([]);
 	const edges = writable([]);
 	var wrapper: EngineWrapper | undefined;
-	var app : App | undefined;
-
+	var app: App | undefined;
 
 	onMount(async () => {
-		const adapter = await navigator.gpu.requestAdapter();
-		if (!adapter) {
-			console.error('Failed to get GPU adapter');
-			return;
-		}
-		const device = await adapter.requestDevice();
 		await init();
 		try {
 			wrapper = await EngineWrapper.init(JSON.stringify(default_graph));
@@ -33,14 +24,23 @@
 			return;
 		}
 
-		app = new App(wrapper, nodes, edges, device);
+		app = new App(wrapper, nodes, edges);
+		const render = () => {
+			app?.wrapper.render();
+		};
 	});
 </script>
 
 <svelte:head></svelte:head>
 <section style="height:100vh;">
-	<button on:click={() => {app?.wrapper.render()}}> RENDER </button>
-	<SvelteFlow {nodes} {edges} {nodeTypes} fitView proOptions={{ hideAttribution: true }}>
+	<button
+		on:click={() => {
+			app?.wrapper.render();
+		}}
+	>
+		RENDER
+	</button>
+	<SvelteFlow oninit={() => app?.wrapper.render() } {nodes} {edges} {nodeTypes} fitView proOptions={{ hideAttribution: true }}>
 		<Background bgColor={GREY} />
 	</SvelteFlow>
 </section>

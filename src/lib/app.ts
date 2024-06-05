@@ -4,21 +4,15 @@ import dagre from '@dagrejs/dagre';
 import { EngineWrapper } from '../../grafiek_wasm/pkg';
 
 export class App {
-	device: GPUDevice;
 	nodes: Writable<Node[]>;
 	edges: Writable<Edge[]>;
 	wrapper: EngineWrapper;
 
-	constructor(
-		wrapper: EngineWrapper,
-		nodes: Writable<Node[]>,
-		edges: Writable<Edge[]>,
-		device: GPUDevice
-	) {
+	constructor(wrapper: EngineWrapper, nodes: Writable<Node[]>, edges: Writable<Edge[]>) {
 		const loadedNodes: Node[] = wrapper.list_nodes().map((node) => ({
 			id: `${node.id}`,
 			type: node.ty,
-			data: { label: node.label, device, ty: node.ty, engine: wrapper, id: node.id },
+			data: { label: node.label, ty: node.ty, engine: wrapper, id: node.id },
 			position: { x: 0, y: 0 },
 			targetPosition: Position.Left,
 			sourcePosition: Position.Right
@@ -36,7 +30,6 @@ export class App {
 		nodes.set(loadedNodes);
 		edges.set(loadedEdges);
 
-		this.device = device;
 		this.wrapper = wrapper;
 		this.nodes = nodes;
 		this.edges = edges;
