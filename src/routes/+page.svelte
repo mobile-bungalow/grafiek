@@ -1,21 +1,29 @@
 <script lang="ts">
 	import default_graph from '../resources/demo.json';
-	import {  layout_graph } from '$lib/layout';
-	import { SvelteFlow, Background, type Edge, type Node, Position } from '@xyflow/svelte';
+	import { SvelteFlow, Background, type Edge, type Node } from '@xyflow/svelte';
 	import { writable } from 'svelte/store';
 	import '@xyflow/svelte/dist/style.css';
 	import { GREY } from '$lib/common';
 	import init, { EngineWrapper } from '../../grafiek_wasm/pkg';
 	// we need onMount to run init
 	import { onMount } from 'svelte';
+	import { App } from '$lib/app';
+	import { nodeTypes } from '$lib/common';
 
-	const initialNodes: Node[] = [];
-	const initialEdges: Edge[] = [];
-	const nodes = writable<Node[]>(initialNodes);
-	const edges = writable(initialEdges);
-	var wrapper: EngineWrapper | undefined = undefined;
+
+	const nodes = writable([]);
+	const edges = writable([]);
+	var wrapper: EngineWrapper | undefined;
+	var app : App | undefined;
+
 
 	onMount(async () => {
+		const adapter = await navigator.gpu.requestAdapter();
+		if (!adapter) {
+			console.error('Failed to get GPU adapter');
+			return;
+		}
+		const device = await adapter.requestDevice();
 		await init();
 		try {
 			wrapper = await EngineWrapper.init(JSON.stringify(default_graph));
@@ -25,32 +33,14 @@
 			return;
 		}
 
-		const loadedNodes: Node[] = wrapper.list_nodes().map((node) => ({
-			id: `${node.id}`,
-			data: { label: node.label },
-			position: { x: 0, y: 0 },
-			targetPosition: Position.Left,
-			sourcePosition: Position.Right,
-		}));
-
-		const loadedEdges: Edge[] = wrapper.list_edges().map((edge) => ({
-			id: `${edge.source_node_id}-${edge.sync_node_id}`,
-			source: `${edge.source_node_id}`,
-			target: `${edge.sync_node_id}`
-		}));
-
-		// TODO: only run this on the condition that there is no layout info
-		layout_graph(loadedNodes, loadedEdges);
-
-		nodes.set(loadedNodes);
-		edges.set(loadedEdges);
+		app = new App(wrapper, nodes, edges, device);
 	});
 </script>
 
 <svelte:head></svelte:head>
-
 <section style="height:100vh;">
-	<SvelteFlow {nodes} {edges} fitView proOptions={{ hideAttribution: true }}>
+	<button on:click={() => {app?.wrapper.render()}}> RENDER </button>
+	<SvelteFlow {nodes} {edges} {nodeTypes} fitView proOptions={{ hideAttribution: true }}>
 		<Background bgColor={GREY} />
 	</SvelteFlow>
 </section>

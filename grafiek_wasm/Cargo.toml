@@ -6,10 +6,18 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib"]
 
-
+[dependencies.web-sys]
+version = "0.3.69"
+features = [
+    "console"
+]
 
 [dependencies]
 wgpu = "0.19.3"
-grafiek_engine = { path = '../../grafiek_engine' } 
+grafiek_engine = { path = '../../grafiek_engine' }
+tweak_shader = '0.2.8'
 wasm-bindgen = "0.2.92"
-wasm-bindgen-futures = "0.4.38"
+wasm-bindgen-futures = "0.4.42"
+js-sys = "0.3.69"
+log = "0.4.21"
+console_log = "1.0.0"
