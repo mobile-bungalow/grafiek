@@ -7,10 +7,13 @@ use wgpu::Queue;
 use wgpu::Texture;
 
 use log::info;
-
+// Manages the surfaces for every nodes preview window
 pub struct PreviewManager {
+    // the windows which are off screen, or which the user has closed to save fillrate
     hidden: HashSet<usize>,
     surfaces: HashMap<usize, wgpu::Surface<'static>>,
+    // a downsampler that maintains the aspect ratio of the input image
+    // by inserting black bars to pad width and height.
     letterbox: RenderContext,
 }
 
@@ -29,6 +32,11 @@ impl PreviewManager {
             surfaces: HashMap::new(),
             letterbox,
         })
+    }
+
+    pub fn remove_surface(&mut self, id: usize) {
+        self.hidden.remove(&id);
+        self.surfaces.remove(&id);
     }
 
     pub fn register_surface(

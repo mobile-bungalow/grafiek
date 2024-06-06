@@ -1,20 +1,15 @@
 mod init;
+mod node_types;
 mod preview_manager;
+mod util;
 
-use grafiek_engine::{
-    document::{self, Document},
-    Engine,
-};
+use grafiek_engine::{document::Document, Engine, TryAsRef};
+use node_types::NodeTypes;
 use preview_manager::PreviewManager;
 
 // wasm
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
-
-// logging
-use console_error_panic_hook;
-use log::Level;
-use std::panic;
 
 const FMT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
@@ -28,18 +23,13 @@ pub struct EngineWrapper {
 }
 
 #[derive(Debug, Clone)]
-#[wasm_bindgen]
-pub enum EdgeType {
-    Image,
-}
-
-#[derive(Debug, Clone)]
 #[wasm_bindgen(getter_with_clone)]
 pub struct EdgeInfo {
     pub source_node_id: usize,
     pub sync_node_id: usize,
     pub source_arg_idx: usize,
     pub sync_arg_idx: usize,
+    pub id: usize,
 }
 
 #[wasm_bindgen(getter_with_clone)]
@@ -50,35 +40,33 @@ pub struct NodeInfo {
     pub ty: NodeTypes,
 }
 
-#[wasm_bindgen]
-#[derive(Copy, Clone, Debug)]
-pub enum NodeTypes {
-    Input = "Input",
-    Output = "Output",
-    GrayScale = "GrayScale",
-}
-
-impl From<document::Op> for NodeTypes {
-    fn from(value: document::Op) -> Self {
-        match value {
-            document::Op::GrayScale => NodeTypes::GrayScale,
-            document::Op::Input { .. } => NodeTypes::Input,
-            document::Op::Output { .. } => NodeTypes::Output,
-        }
-    }
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Debug, Clone)]
+pub struct ImageInfo {
+    pub width: u32,
+    pub height: u32,
+    pub data: Vec<u8>,
 }
 
 #[wasm_bindgen]
 impl EngineWrapper {
     pub async fn init(json: String) -> Result<EngineWrapper, String> {
         console_error_panic_hook::set_once();
-        console_log::init_with_level(Level::Debug).map_err(|_| "log init failed".to_owned())?;
+
+        let level = if cfg!(debug_assertions) {
+            log::Level::Trace
+        } else {
+            log::Level::Info
+        };
+        console_log::init_with_level(level).map_err(|_| "log init failed".to_owned())?;
+
         let init::WgpuContext {
             queue,
             device,
             instance,
             ..
         } = init::new_ctx().await?;
+
         let doc = Document::load(json).map_err(|e| format!("{e:?}"))?;
         let engine = Engine::new(&doc, &device, &queue).map_err(|e| format!("{e:?}"))?;
 
@@ -112,6 +100,7 @@ impl EngineWrapper {
         self.engine
             .iter_edges()
             .map(|e| EdgeInfo {
+                id: e.id,
                 source_node_id: e.source_node,
                 sync_node_id: e.sync_node,
                 source_arg_idx: e.source_arg_index,
@@ -120,7 +109,10 @@ impl EngineWrapper {
             .collect()
     }
 
-    pub fn remove_node(&mut self, id: usize) {}
+    pub fn remove_node(&mut self, id: usize) {
+        self.engine.remove_node(id as u32);
+        self.preview_manager.remove_surface(id);
+    }
 
     pub fn register_surface(&mut self, id: usize, canvas: HtmlCanvasElement) {
         self.preview_manager
@@ -129,9 +121,13 @@ impl EngineWrapper {
 
     pub fn update_node_metadata(&mut self, id: usize, metadata: usize) {}
 
-    pub fn connect_nodes(&mut self, out_id: usize, in_id: usize, out_edge: &str, in_edge: &str) {}
+    pub fn connect_nodes(&mut self, out_id: usize, in_id: usize, out_edge: usize, in_edge: usize) {
+        self.engine
+            .connect_nodes(out_id as u32, in_id as u32, out_edge, in_edge);
+    }
 
-    pub fn disconnect_nodes(&mut self, out_id: usize, in_id: usize, out_edge: &str, in_edge: &str) {
+    pub fn disconnect_nodes(&mut self, edge_id: usize) {
+        self.engine.remove_edge(edge_id as u32);
     }
 
     /// TODO: more info logged on failure / throw an error
@@ -157,5 +153,18 @@ impl EngineWrapper {
             .set_input_var("input", data, width, height, &self.device, &self.queue);
     }
 
-    pub fn export_output(&self, name: &str) {}
+    pub async fn export_image_output(&self, name: &str) -> Result<ImageInfo, String> {
+        if let Some(tex) = self.engine.get_output(name).and_then(|t| t.try_as_ref()) {
+
+            let vec = util::read_texture_contents_to_vec(&self.device, &self.queue, tex).await?;
+
+            Ok(ImageInfo {
+                data: vec,
+                height: tex.height(),
+                width: tex.width(),
+            })
+        } else {
+            Err("no output of that name".to_owned())
+        }
+    }
 }
