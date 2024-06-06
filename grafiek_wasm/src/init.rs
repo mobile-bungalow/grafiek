@@ -4,7 +4,6 @@ pub struct WgpuContext {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub instance: wgpu::Instance,
-    pub adapter: wgpu::Adapter,
 }
 
 pub async fn new_ctx() -> Result<WgpuContext, String> {
@@ -45,6 +44,5 @@ pub async fn new_ctx() -> Result<WgpuContext, String> {
         device,
         queue,
         instance,
-        adapter,
     })
 }

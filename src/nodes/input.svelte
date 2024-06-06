@@ -12,8 +12,8 @@
 	let preview_canvas: HTMLCanvasElement;
 
 	const onImageLoad = (im: { data: Uint8ClampedArray; width: number; height: number }) => {
-    engine.set_input_image(Uint8Array.from(im.data), im.width, im.height, id);
-    engine.update_preview(id);
+		engine.set_input_image(Uint8Array.from(im.data), im.width, im.height, id);
+    engine.render();
 	};
 
 	const handleChange = (e: Event) => {
@@ -23,8 +23,8 @@
 	onMount(() => {
 		engine.register_surface(id, preview_canvas);
 		loadImageSrcThen(test_card, onImageLoad);
+    engine.update_preview(id);
 	});
-
 </script>
 
 <div class="flow-node node">
@@ -32,7 +32,7 @@
 		{label} - {ty}
 	</div>
 	<div>
-    <canvas bind:this={preview_canvas}></canvas>
+		<canvas bind:this={preview_canvas}></canvas>
 	</div>
 	<input bind:this={file_input} type="file" accept="image/*" on:change={handleChange} />
 	<Handle type="source" position={Position.Right} />
@@ -44,5 +44,4 @@
 		flex-direction: column;
 		align-items: center;
 	}
-
 </style>

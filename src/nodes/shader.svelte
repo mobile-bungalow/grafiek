@@ -10,7 +10,7 @@
 
 	onMount(() => {
 		engine.register_surface(id, preview_canvas);
-    engine.update_preview(id);
+		engine.update_preview(id);
 	});
 </script>
 
@@ -24,8 +24,8 @@
 </div>
 
 <style>
-  .col {
-    display: flex;
-    flex-direction: column;
-  }
+	.col {
+		display: flex;
+		flex-direction: column;
+	}
 </style>

@@ -146,12 +146,13 @@ impl EngineWrapper {
 
     pub fn update_all_previews(&mut self) {
         let dirty_nodes = self.preview_manager.dirty_nodes();
-        dirty_nodes.into_iter().for_each(|id| self.update_preview(id));
+        dirty_nodes
+            .into_iter()
+            .for_each(|id| self.update_preview(id));
     }
 
     //TODO: get rid of this and generalize
     pub fn set_input_image(&mut self, data: Vec<u8>, width: u32, height: u32, id: usize) {
-        
         self.engine
             .set_input_var("input", data, width, height, &self.device, &self.queue);
     }

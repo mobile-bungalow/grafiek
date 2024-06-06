@@ -1,6 +1,6 @@
 <script lang="ts">
 	import default_graph from '../resources/demo.json';
-	import { SvelteFlow, Background, type Edge, type Node } from '@xyflow/svelte';
+	import { SvelteFlow, Background, type Edge, type Node, SvelteFlowProvider } from '@xyflow/svelte';
 	import { writable } from 'svelte/store';
 	import '@xyflow/svelte/dist/style.css';
 	import { GREY } from '$lib/common';
@@ -8,6 +8,7 @@
 	import { onMount } from 'svelte';
 	import { App } from '$lib/app';
 	import { nodeTypes } from '$lib/common';
+	import { useNodes } from '@xyflow/svelte';
 
 	const nodes = writable([]);
 	const edges = writable([]);
@@ -25,22 +26,14 @@
 		}
 
 		app = new App(wrapper, nodes, edges);
-		const render = () => {
-			app?.wrapper.render();
-		};
 	});
+
+
 </script>
 
 <svelte:head></svelte:head>
 <section style="height:100vh;">
-	<button
-		on:click={() => {
-			app?.wrapper.render();
-		}}
-	>
-		RENDER
-	</button>
-	<SvelteFlow oninit={() => app?.wrapper.render() } {nodes} {edges} {nodeTypes} fitView proOptions={{ hideAttribution: true }}>
+	<SvelteFlow {nodes} {edges} {nodeTypes} fitView proOptions={{ hideAttribution: true }}>
 		<Background bgColor={GREY} />
 	</SvelteFlow>
 </section>

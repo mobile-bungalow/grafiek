@@ -9,6 +9,7 @@ export class App {
 	wrapper: EngineWrapper;
 
 	constructor(wrapper: EngineWrapper, nodes: Writable<Node[]>, edges: Writable<Edge[]>) {
+
 		const loadedNodes: Node[] = wrapper.list_nodes().map((node) => ({
 			id: `${node.id}`,
 			type: node.ty,
@@ -23,6 +24,7 @@ export class App {
 			target: `${edge.source_node_id}`,
 			source: `${edge.sync_node_id}`
 		}));
+
 
 		// TODO: only run this on the condition that there is no layout info
 		layout_graph(loadedNodes, loadedEdges);
