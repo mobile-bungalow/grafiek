@@ -1,7 +1,8 @@
-import { type Edge, type Node, Position } from '@xyflow/svelte';
+import { type Edge, type Node, Position, type Connection } from '@xyflow/svelte';
 import { type Writable } from 'svelte/store';
 import dagre from '@dagrejs/dagre';
 import { EngineWrapper } from '../../grafiek_wasm/pkg';
+import type { CommonNodeData, CommonEdgeData } from './common';
 
 export class App {
 	nodes: Writable<Node[]>;
@@ -9,7 +10,6 @@ export class App {
 	wrapper: EngineWrapper;
 
 	constructor(wrapper: EngineWrapper, nodes: Writable<Node[]>, edges: Writable<Edge[]>) {
-
 		const loadedNodes: Node[] = wrapper.list_nodes().map((node) => ({
 			id: `${node.id}`,
 			type: node.ty,
@@ -20,11 +20,11 @@ export class App {
 		}));
 
 		const loadedEdges: Edge[] = wrapper.list_edges().map((edge) => ({
+			data: { id: edge.id },
 			id: `${edge.source_node_id}-${edge.sync_node_id}`,
 			target: `${edge.source_node_id}`,
 			source: `${edge.sync_node_id}`
 		}));
-
 
 		// TODO: only run this on the condition that there is no layout info
 		layout_graph(loadedNodes, loadedEdges);
@@ -35,6 +35,43 @@ export class App {
 		this.wrapper = wrapper;
 		this.nodes = nodes;
 		this.edges = edges;
+	}
+
+	remove_weights(removals: { nodes: Node[]; edges: Edge[] }) {
+		for (const node of removals.nodes) {
+			const data = node.data as CommonNodeData;
+			this.wrapper.remove_node(data.id);
+		}
+
+		for (const edge of removals.edges) {
+			const data = edge.data as CommonEdgeData;
+			this.wrapper.remove_edge(data.id);
+		}
+		this.wrapper.render();
+	}
+
+	connect(con: Connection) {
+		// TODO: actual target indices
+		// TODO: add edge ID to the new edge
+		this.wrapper.connect_nodes(Number(con.source), Number(con.target), 0, 0);
+		this.wrapper.render();
+	}
+
+
+	test_add() {
+		const id = this.wrapper.add_node('Grief');
+		this.nodes.update((nodesMut) => {
+			nodesMut.push({
+				id: `${id}`,
+				type: 'GrayScale',
+				data: { label: 'Grief', ty: 'GrayScale', engine: this.wrapper, id },
+				position: { x: 0, y: 0 },
+				targetPosition: Position.Left,
+				sourcePosition: Position.Right
+			});
+			console.log(nodesMut);
+			return nodesMut;
+		});
 	}
 }
 

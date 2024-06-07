@@ -13,11 +13,11 @@
 		engine.update_preview(id);
 	});
   const onExportClick = async () => {
-    let im = await engine.export_image_output(label);
-    if (im) {
+    try {
+     let im = await engine.export_image_output(label);
       downloadImage(im);
-    } else {
-      console.error("null ouput");
+    } catch (e) {
+      console.error(e);
     }
   }
 </script>

@@ -3,7 +3,10 @@ mod node_types;
 mod preview_manager;
 mod util;
 
-use grafiek_engine::{document::Document, Engine, TryAsRef};
+use grafiek_engine::{
+    document::{self, Document, Op},
+    Engine, TryAsRef,
+};
 use node_types::NodeTypes;
 use preview_manager::PreviewManager;
 
@@ -101,6 +104,7 @@ impl EngineWrapper {
             .iter_edges()
             .map(|e| EdgeInfo {
                 id: e.id,
+                //TODO: i maybe yagni'd these indices :/
                 source_node_id: e.source_node,
                 sync_node_id: e.sync_node,
                 source_arg_idx: e.source_arg_index,
@@ -114,21 +118,36 @@ impl EngineWrapper {
         self.preview_manager.remove_surface(id);
     }
 
+    pub fn remove_edge(&mut self, edge_id: usize) {
+        self.engine.remove_edge(edge_id as u32);
+    }
+
     pub fn register_surface(&mut self, id: usize, canvas: HtmlCanvasElement) {
         self.preview_manager
             .register_surface(id, canvas, &self.device, &self.instance)
     }
-
-    pub fn update_node_metadata(&mut self, id: usize, metadata: usize) {}
 
     pub fn connect_nodes(&mut self, out_id: usize, in_id: usize, out_edge: usize, in_edge: usize) {
         self.engine
             .connect_nodes(out_id as u32, in_id as u32, out_edge, in_edge);
     }
 
-    pub fn disconnect_nodes(&mut self, edge_id: usize) {
-        self.engine.remove_edge(edge_id as u32);
+    // TODO: it seems like each type will need it's own constructor, for now we just need to steel cable with
+    // grayscale
+    pub fn add_node(&mut self, label: String) -> usize {
+        let desc = document::NodeDesc {
+            op: Op::GrayScale,
+            info: document::NodeInfo {
+                label: label.into(),
+            },
+        };
+        let idx = self.engine
+            .add_node(desc, &self.device, &self.queue)
+            .unwrap();
+
+        idx.index()
     }
+
 
     /// TODO: more info logged on failure / throw an error
     pub fn update_preview(&mut self, id: usize) {
@@ -155,7 +174,6 @@ impl EngineWrapper {
 
     pub async fn export_image_output(&self, name: &str) -> Result<ImageInfo, String> {
         if let Some(tex) = self.engine.get_output(name).and_then(|t| t.try_as_ref()) {
-
             let vec = util::read_texture_contents_to_vec(&self.device, &self.queue, tex).await?;
 
             Ok(ImageInfo {

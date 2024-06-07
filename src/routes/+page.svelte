@@ -13,7 +13,7 @@
 	const nodes = writable([]);
 	const edges = writable([]);
 	var wrapper: EngineWrapper | undefined;
-	var app: App | undefined;
+	var app: App;
 
 	onMount(async () => {
 		await init();
@@ -27,13 +27,23 @@
 
 		app = new App(wrapper, nodes, edges);
 	});
-
-
 </script>
 
 <svelte:head></svelte:head>
 <section style="height:100vh;">
-	<SvelteFlow {nodes} {edges} {nodeTypes} fitView proOptions={{ hideAttribution: true }}>
+	<button on:click={() => app.test_add()}>
+		ADD TEST
+	</button>
+	<SvelteFlow
+		ondelete={(n) => app.remove_weights(n)}
+		onconnectend={(e) => {console.log(e)}}
+		onconnect={(connection)=>{app.connect(connection)}}
+		{nodes}
+		{edges}
+		{nodeTypes}
+		fitView
+		proOptions={{ hideAttribution: true }}
+	>
 		<Background bgColor={GREY} />
 	</SvelteFlow>
 </section>

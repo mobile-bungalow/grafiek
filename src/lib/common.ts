@@ -12,6 +12,10 @@ export const nodeTypes = {
 	Output: Output
 };
 
+export type CommonEdgeData = {
+	id: number;
+};
+
 export type CommonNodeData = {
 	label: string;
 	ty: string;
