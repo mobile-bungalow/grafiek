@@ -12,6 +12,13 @@ export const nodeTypes = {
 	Output: Output
 };
 
+export type Action =
+	| {
+			tag: 'addNode';
+			id: number;
+	  }
+	| { tag: 'addEdge'; id: number };
+
 export type CommonEdgeData = {
 	id: number;
 };
@@ -31,7 +38,6 @@ type ImageDataCallback = (imageData: {
 }) => void;
 
 export const handleImageUpload = (event: Event, setImageData: ImageDataCallback) => {
-
 	const fileList = (event.target as HTMLInputElement).files;
 	if (!fileList || fileList.length === 0) {
 		console.error('No file selected');
@@ -43,17 +49,14 @@ export const handleImageUpload = (event: Event, setImageData: ImageDataCallback)
 
 	reader.onload = (event) => {
 		if (event.target) {
-			loadImageSrcThen(event.target.result as string, setImageData)
+			loadImageSrcThen(event.target.result as string, setImageData);
 		}
 	};
 
 	reader.readAsDataURL(file);
 };
 
-export const loadImageSrcThen = (
-	src: string,
-	setImageData: ImageDataCallback
-) => {
+export const loadImageSrcThen = (src: string, setImageData: ImageDataCallback) => {
 	const imgElement = new Image();
 	imgElement.onload = () => {
 		const canvas = new OffscreenCanvas(imgElement.width, imgElement.height);
@@ -80,31 +83,33 @@ export const loadImageSrcThen = (
 };
 
 export const downloadImage = (im: ImageInfo) => {
-    const width = im.width;
-    const height = im.height;
-    const rgba_pixels = im.data;
+	const width = im.width;
+	const height = im.height;
+	const rgba_pixels = im.data;
 
-	console.log(im);
-    const canvas = new OffscreenCanvas(width, height);
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-        console.error('Failed to get canvas 2D context');
-        return;
-    }
+	const canvas = new OffscreenCanvas(width, height);
+	const ctx = canvas.getContext('2d');
+	if (!ctx) {
+		console.error('Failed to get canvas 2D context');
+		return;
+	}
 
-    const imageData = new ImageData(Uint8ClampedArray.from(rgba_pixels), width, height);
-    ctx.putImageData(imageData, 0, 0);
+	const imageData = new ImageData(Uint8ClampedArray.from(rgba_pixels), width, height);
+	ctx.putImageData(imageData, 0, 0);
 
-    canvas.convertToBlob({ type: 'image/png' }).then(blob => {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'downloaded_image.png';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    }).catch(err => {
-        console.error('Failed to create blob from canvas:', err);
-    });
+	canvas
+		.convertToBlob({ type: 'image/png' })
+		.then((blob) => {
+			const url = URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = 'downloaded_image.png';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			URL.revokeObjectURL(url);
+		})
+		.catch((err) => {
+			console.error('Failed to create blob from canvas:', err);
+		});
 };

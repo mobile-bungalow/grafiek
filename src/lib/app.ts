@@ -2,11 +2,12 @@ import { type Edge, type Node, Position, type Connection } from '@xyflow/svelte'
 import { type Writable } from 'svelte/store';
 import dagre from '@dagrejs/dagre';
 import { EngineWrapper } from '../../grafiek_wasm/pkg';
-import type { CommonNodeData, CommonEdgeData } from './common';
+import type { CommonNodeData, CommonEdgeData, Action } from './common';
 
 export class App {
 	nodes: Writable<Node[]>;
 	edges: Writable<Edge[]>;
+	edits: Action[] = [];
 	wrapper: EngineWrapper;
 
 	constructor(wrapper: EngineWrapper, nodes: Writable<Node[]>, edges: Writable<Edge[]>) {
@@ -42,17 +43,17 @@ export class App {
 		}
 
 		for (const edge of removals.edges) {
-			console.log(edge);
 			const data = edge.data as CommonEdgeData;
 			this.wrapper.remove_edge(data.id);
 		}
 		this.wrapper.render();
 	}
 
-	connect(con: Connection): Edge {
+	handle_new_connection(con: Connection): Edge {
 		// TODO: actual target indices
 		// TODO: add edge ID to the new edge
 		const id = this.wrapper.connect_nodes(Number(con.source), Number(con.target), 0, 0);
+
 		this.wrapper.render();
 		return {	
 			data: { id },
@@ -69,13 +70,14 @@ export class App {
 			nodesMut.push({
 				id: `${id}`,
 				type: 'GrayScale',
-				data: { label: 'Grief', ty: 'GrayScale', engine: this.wrapper, id },
+				data: { label: 'Grief', ty: 'GrayScale', engine: this.wrapper, id,  },
 				position: { x: 0, y: 0 },
 				targetPosition: Position.Left,
 				sourcePosition: Position.Right
 			});
 			return nodesMut;
 		});
+		this.wrapper.render();
 	}
 }
 

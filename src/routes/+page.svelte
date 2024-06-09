@@ -8,7 +8,6 @@
 	import { onMount } from 'svelte';
 	import { App } from '$lib/app';
 	import { nodeTypes } from '$lib/common';
-	import { useNodes } from '@xyflow/svelte';
 
 	const nodes = writable([]);
 	const edges = writable([]);
@@ -36,7 +35,8 @@
 	</button>
 	<SvelteFlow
 		ondelete={(n) => app.remove_weights(n)}
-		onedgecreate={(e) => app.connect(e)}
+		onedgecreate={(e) => app.handle_new_connection(e)}
+		on
 		{nodes}
 		{edges}
 		{nodeTypes}
