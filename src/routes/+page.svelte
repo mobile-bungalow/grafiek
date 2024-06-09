@@ -36,8 +36,7 @@
 	</button>
 	<SvelteFlow
 		ondelete={(n) => app.remove_weights(n)}
-		onconnectend={(e) => {console.log(e)}}
-		onconnect={(connection)=>{app.connect(connection)}}
+		onedgecreate={(e) => app.connect(e)}
 		{nodes}
 		{edges}
 		{nodeTypes}

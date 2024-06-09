@@ -5,7 +5,7 @@ mod util;
 
 use grafiek_engine::{
     document::{self, Document, Op},
-    Engine, TryAsRef,
+    Engine,
 };
 use node_types::NodeTypes;
 use preview_manager::PreviewManager;
@@ -106,9 +106,9 @@ impl EngineWrapper {
                 id: e.id,
                 //TODO: i maybe yagni'd these indices :/
                 source_node_id: e.source_node,
-                sync_node_id: e.sync_node,
+                sync_node_id: e.sink_node,
                 source_arg_idx: e.source_arg_index,
-                sync_arg_idx: e.sync_arg_index,
+                sync_arg_idx: e.sink_arg_index,
             })
             .collect()
     }
@@ -127,9 +127,9 @@ impl EngineWrapper {
             .register_surface(id, canvas, &self.device, &self.instance)
     }
 
-    pub fn connect_nodes(&mut self, out_id: usize, in_id: usize, out_edge: usize, in_edge: usize) {
+    pub fn connect_nodes(&mut self, out_id: usize, in_id: usize, out_edge: usize, in_edge: usize) -> usize {
         self.engine
-            .connect_nodes(out_id as u32, in_id as u32, out_edge, in_edge);
+            .connect_nodes(out_id as u32, in_id as u32, out_edge, in_edge)
     }
 
     // TODO: it seems like each type will need it's own constructor, for now we just need to steel cable with
@@ -173,7 +173,7 @@ impl EngineWrapper {
     }
 
     pub async fn export_image_output(&self, name: &str) -> Result<ImageInfo, String> {
-        if let Some(tex) = self.engine.get_output(name).and_then(|t| t.try_as_ref()) {
+        if let Some(tex) = self.engine.get_output(name).and_then(|t| t.try_into().ok()) {
             let vec = util::read_texture_contents_to_vec(&self.device, &self.queue, tex).await?;
 
             Ok(ImageInfo {

@@ -15,15 +15,13 @@ export class App {
 			type: node.ty,
 			data: { label: node.label, ty: node.ty, engine: wrapper, id: node.id },
 			position: { x: 0, y: 0 },
-			targetPosition: Position.Left,
-			sourcePosition: Position.Right
 		}));
 
 		const loadedEdges: Edge[] = wrapper.list_edges().map((edge) => ({
 			data: { id: edge.id },
 			id: `${edge.source_node_id}-${edge.sync_node_id}`,
-			target: `${edge.source_node_id}`,
-			source: `${edge.sync_node_id}`
+			source: `${edge.source_node_id}`,
+			target: `${edge.sync_node_id}`
 		}));
 
 		// TODO: only run this on the condition that there is no layout info
@@ -44,17 +42,24 @@ export class App {
 		}
 
 		for (const edge of removals.edges) {
+			console.log(edge);
 			const data = edge.data as CommonEdgeData;
 			this.wrapper.remove_edge(data.id);
 		}
 		this.wrapper.render();
 	}
 
-	connect(con: Connection) {
+	connect(con: Connection): Edge {
 		// TODO: actual target indices
 		// TODO: add edge ID to the new edge
-		this.wrapper.connect_nodes(Number(con.source), Number(con.target), 0, 0);
+		const id = this.wrapper.connect_nodes(Number(con.source), Number(con.target), 0, 0);
 		this.wrapper.render();
+		return {	
+			data: { id },
+			id: `${con.source}-${con.target}`,
+			source: `${con.source}`,
+			target: `${con.target}`
+		};
 	}
 
 
@@ -69,7 +74,6 @@ export class App {
 				targetPosition: Position.Left,
 				sourcePosition: Position.Right
 			});
-			console.log(nodesMut);
 			return nodesMut;
 		});
 	}
