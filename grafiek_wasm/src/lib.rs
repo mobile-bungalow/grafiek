@@ -152,6 +152,8 @@ impl EngineWrapper {
     /// TODO: more info logged on failure / throw an error
     pub fn update_preview(&mut self, id: usize) {
         let Some(preview) = self.engine.get_preview(id as u32) else {
+        self.preview_manager
+            .clear(&self.device, &self.queue, id);
             return;
         };
 

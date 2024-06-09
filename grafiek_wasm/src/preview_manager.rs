@@ -7,11 +7,17 @@ use wgpu::Queue;
 use wgpu::Texture;
 
 use log::info;
+
+struct SurfaceMeta {
+    pub surface: wgpu::Surface<'static>,
+    pub cleared: bool,
+}
+
 // Manages the surfaces for every nodes preview window
 pub struct PreviewManager {
     // the windows which are off screen, or which the user has closed to save fillrate
     hidden: HashSet<usize>,
-    surfaces: HashMap<usize, wgpu::Surface<'static>>,
+    surfaces: HashMap<usize, SurfaceMeta>,
     // a downsampler that maintains the aspect ratio of the input image
     // by inserting black bars to pad width and height.
     letterbox: RenderContext,
@@ -67,11 +73,63 @@ impl PreviewManager {
             },
         );
 
-        self.surfaces.insert(id, wgpu_surface);
+        self.surfaces.insert(
+            id,
+            SurfaceMeta {
+                cleared: false,
+                surface: wgpu_surface,
+            },
+        );
+    }
+
+    pub fn clear(&mut self, device: &Device, queue: &Queue, id: usize) {
+        let Some(SurfaceMeta { cleared, surface }) = self.surfaces.get_mut(&id) else {
+            return;
+        };
+
+        if *cleared {
+            return;
+        }
+
+        let surface = match surface.get_current_texture() {
+            Ok(s) => s,
+            Err(e) => {
+                info!("{e:?}");
+                return;
+            }
+        };
+
+        let view = surface.texture.create_view(&Default::default());
+
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Clear Encoder"),
+        });
+
+        {
+            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Clear Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: Default::default(),
+            });
+        }
+
+        queue.submit(std::iter::once(encoder.finish()));
+        surface.present();
+
+        *cleared = true;
     }
 
     pub fn update_preview(&mut self, device: &Device, queue: &Queue, id: usize, preview: &Texture) {
-        let Some(surface) = self.surfaces.get(&id) else {
+        let Some(SurfaceMeta { surface, cleared }) = self.surfaces.get_mut(&id) else {
             return;
         };
 
@@ -93,6 +151,7 @@ impl PreviewManager {
         self.letterbox.load_shared_texture(preview, "image");
         self.letterbox
             .render(&queue, &device, view, width as u32, height as u32);
+        *cleared = false;
 
         surface.present();
     }
